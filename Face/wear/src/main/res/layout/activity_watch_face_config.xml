@@ -20,7 +20,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/dark_grey"
-    android:paddingTop="4dp">
+    android:paddingTop="15dp">
 
     <TextView
         android:id="@+id/header"

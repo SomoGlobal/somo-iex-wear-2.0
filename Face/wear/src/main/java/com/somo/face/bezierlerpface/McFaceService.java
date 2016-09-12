@@ -28,7 +28,6 @@ import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -39,9 +38,13 @@ import android.support.wearable.watchface.WatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
 import android.util.Log;
 import android.view.SurfaceHolder;
-import android.widget.Toast;
+import android.view.View;
+
+import com.github.adnansm.timelytextview.TimelyView;
+import com.nineoldandroids.animation.ValueAnimator;
 
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Field;
 import java.util.Calendar;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
@@ -64,6 +67,65 @@ public class McFaceService extends CanvasWatchFaceService {
             this.supportedTypes = supportedTypes;
             this.name = name;
             this.iconId = iconId;
+        }
+    }
+
+    private static class NumberView {
+        private final TimelyView timelyView;
+        private final int width;
+        private final int height;
+        private Integer number = null;
+
+        public NumberView(Context context, int width, int heightMax, int colour, float strokePx) {
+            timelyView = new TimelyView(context);
+
+            Paint textPaint = new Paint();
+            textPaint.setAntiAlias(true);
+            textPaint.setColor(colour);
+            textPaint.setStrokeWidth(strokePx);
+            textPaint.setStyle(Paint.Style.STROKE);
+            try {
+                Field paintField = TimelyView.class.getDeclaredField("mPaint");
+                paintField.setAccessible(true);//Very important, this allows the setting to work.
+                paintField.set(timelyView, textPaint);
+            } catch (NoSuchFieldException e) {
+                throw new RuntimeException(e);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+
+            // Measure exactly for now, adjust this if you want wrap content
+            int widthSpec = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY);
+            int heightSpec = View.MeasureSpec.makeMeasureSpec(heightMax, View.MeasureSpec.AT_MOST);
+            timelyView.measure(widthSpec, heightSpec);
+
+            this.width = timelyView.getMeasuredWidth();
+            this.height = timelyView.getMeasuredHeight();
+            timelyView.layout(0, 0, this.width, this.height);
+        }
+
+        public void draw(final CanvasWatchFaceService.Engine engine, int number, Canvas canvas, int centerX, int centerY) {
+            if (this.number == null || this.number != number) {
+                int start = this.number == null ? 0 : this.number;
+                int end = number;
+                this.number = number;
+                com.nineoldandroids.animation.ObjectAnimator anim = timelyView.animate(start, end);
+                anim.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                    @Override
+                    public void onAnimationUpdate(ValueAnimator animation) {
+                        engine.invalidate();
+                    }
+                });
+                anim.start();
+            }
+
+            /**/
+
+            //Translate the canvas so the view is drawn at the proper coordinates
+            canvas.save();
+            canvas.translate(centerX - (width / 2), centerY - (height / 2));
+            timelyView.draw(canvas);
+            canvas.restore();
         }
     }
 
@@ -145,11 +207,19 @@ public class McFaceService extends CanvasWatchFaceService {
         private Paint mSecondPaint;
         private Paint mTickAndCirclePaint;
         private Paint mBackgroundPaint;
+        private Paint mPinkRingLumpPaint;
         private Bitmap mBackgroundBitmap;
         private Bitmap mGrayBackgroundBitmap;
+        private Bitmap mCosmosBitmap;
+        private Bitmap mBokehBitmap;
         private boolean mAmbient;
         private boolean mLowBitAmbient;
         private boolean mBurnInProtection;
+
+        private NumberView handMinute10s;
+        private NumberView handMinute1s;
+        private NumberView handHour10s;
+        private NumberView handHour1s;
 
         @Override
         public void onCreate(SurfaceHolder holder) {
@@ -170,7 +240,12 @@ public class McFaceService extends CanvasWatchFaceService {
 
             mBackgroundPaint = new Paint();
             mBackgroundPaint.setColor(Color.BLACK);
-            mBackgroundBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.bg);
+            mPinkRingLumpPaint = new Paint();
+            mPinkRingLumpPaint.setAntiAlias(true);
+            mPinkRingLumpPaint.setColor(0xFFC53C91);
+            mBackgroundBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.pink_ring);
+            mCosmosBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.cosmos);
+            mBokehBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.bokeh);
 
             /* Set defaults for colors */
             mWatchHandColor = Color.WHITE;
@@ -341,6 +416,13 @@ public class McFaceService extends CanvasWatchFaceService {
             if (!mBurnInProtection && !mLowBitAmbient) {
                 initGrayBackgroundBitmap();
             }
+
+            int charWidth = Math.round((float) width * 0.07f);
+            int strokeWidth = Math.round((float) width * 0.010f);
+            handMinute10s = new NumberView(getApplicationContext(), charWidth, height, 0xFFAAAAAA, strokeWidth);
+            handMinute1s = new NumberView(getApplicationContext(), charWidth, height, 0xFFAAAAAA, strokeWidth);
+            handHour10s = new NumberView(getApplicationContext(), charWidth, height, 0xFFFFFFFF, strokeWidth);
+            handHour1s = new NumberView(getApplicationContext(), charWidth, height, 0xFFFFFFFF, strokeWidth);
         }
 
         private void initGrayBackgroundBitmap() {
@@ -373,8 +455,19 @@ public class McFaceService extends CanvasWatchFaceService {
                 case TAP_TYPE_TAP:
                     // The user has completed the tap gesture.
                     // TODO: Add code to handle the tap gesture.
-                    Toast.makeText(getApplicationContext(), R.string.message, Toast.LENGTH_SHORT)
-                            .show();
+                    /*Toast.makeText(getApplicationContext(), R.string.message, Toast.LENGTH_SHORT)
+                            .show();*/
+                    /*int start = 0;
+                    int end = 6;
+                    com.nineoldandroids.animation.ObjectAnimator anim = timelyView.animate(start, end);
+                    anim.start();
+                    anim.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                        @Override
+                        public void onAnimationUpdate(ValueAnimator animation) {
+                            invalidate();
+                        }
+                    });*/
+
                     break;
             }
             invalidate();
@@ -382,14 +475,34 @@ public class McFaceService extends CanvasWatchFaceService {
 
         @Override
         public void onDraw(Canvas canvas, Rect bounds) {
+            Log.d(TAG, "onDraw: " + bounds);
+
             long now = System.currentTimeMillis();
             mCalendar.setTimeInMillis(now);
+            /*
+             * These calculations reflect the rotation in degrees per unit of time, e.g.,
+             * 360 / 60 = 6 and 360 / 12 = 30.
+             */
+            final float seconds =
+                    (mCalendar.get(Calendar.SECOND) + mCalendar.get(Calendar.MILLISECOND) / 1000f);
+            final float secondsRotation = seconds * 6f;
+
+            final int minutes = mCalendar.get(Calendar.MINUTE);
+            final float minutesRotation = (float) minutes * 6f;
+
+            final int hours12 = mCalendar.get(Calendar.HOUR);
+            final float hourHandOffset = (float) minutes / 2f;
+            final float hoursRotation = ((float) hours12 * 30) + hourHandOffset;
 
             if (mAmbient && (mLowBitAmbient || mBurnInProtection)) {
                 canvas.drawColor(Color.BLACK);
             } else if (mAmbient) {
+                canvas.drawBitmap(mCosmosBitmap, 36, 36, mBackgroundPaint);
+                canvas.drawBitmap(mBokehBitmap, 36, 36, mBackgroundPaint);
                 canvas.drawBitmap(mGrayBackgroundBitmap, 0, 0, mBackgroundPaint);
             } else {
+                canvas.drawBitmap(mCosmosBitmap, 36, 36, mBackgroundPaint);
+                canvas.drawBitmap(mBokehBitmap, 36, 36, mBackgroundPaint);
                 canvas.drawBitmap(mBackgroundBitmap, 0, 0, mBackgroundPaint);
             }
 
@@ -409,19 +522,6 @@ public class McFaceService extends CanvasWatchFaceService {
                 canvas.drawLine(mCenterX + innerX, mCenterY + innerY,
                         mCenterX + outerX, mCenterY + outerY, mTickAndCirclePaint);
             }
-
-            /*
-             * These calculations reflect the rotation in degrees per unit of time, e.g.,
-             * 360 / 60 = 6 and 360 / 12 = 30.
-             */
-            final float seconds =
-                    (mCalendar.get(Calendar.SECOND) + mCalendar.get(Calendar.MILLISECOND) / 1000f);
-            final float secondsRotation = seconds * 6f;
-
-            final float minutesRotation = mCalendar.get(Calendar.MINUTE) * 6f;
-
-            final float hourHandOffset = mCalendar.get(Calendar.MINUTE) / 2f;
-            final float hoursRotation = (mCalendar.get(Calendar.HOUR) * 30) + hourHandOffset;
 
             /*
              * Save the canvas state before we can begin to rotate it.
@@ -471,6 +571,21 @@ public class McFaceService extends CanvasWatchFaceService {
             if (mAmbient) {
                 canvas.drawRect(mPeekCardBounds, mBackgroundPaint);
             }
+
+            //Translate the canvas so the view is drawn at the proper coordinates
+
+            canvas.drawCircle(mCenterX, mCenterY, 35, mPinkRingLumpPaint);
+
+            if (hours12 >= 10) {
+                handHour10s.draw(this, 1, canvas, (int) mCenterX - 11, (int) mCenterY);
+                handHour1s.draw(this, hours12 - 10, canvas, (int) mCenterX + 11, (int) mCenterY);
+
+            } else {
+                handHour1s.draw(this, hours12, canvas, (int) mCenterX, (int) mCenterY);
+            }
+
+            handMinute10s.draw(this, (int) minutes / (int) 10, canvas, (int) mCenterX - 11, (int) mCenterY + 30);
+            handMinute1s.draw(this, (int) minutes % 10, canvas, (int) mCenterX + 11, (int) mCenterY + 30);
         }
 
         @Override

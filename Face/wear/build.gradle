@@ -1,5 +1,9 @@
 apply plugin: 'com.android.application'
 
+repositories {
+    maven { url "https://jitpack.io" }
+}
+
 android {
     compileSdkVersion 24
     buildToolsVersion "24.0.2"
@@ -24,4 +28,5 @@ dependencies {
     compile 'com.google.android.gms:play-services-wearable:9.4.0'
     //compile 'com.android.support:palette-v7:24.2.0'
     compile 'org.joml:joml:1.7.1'
+    compile 'com.github.adnan-SM:TimelyTextView:1.0'
 }
