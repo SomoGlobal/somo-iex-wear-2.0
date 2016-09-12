@@ -606,10 +606,11 @@ public class McFaceService extends CanvasWatchFaceService {
         private void drawComplications(Canvas canvas) {
             if (complicationText0 != null ) {
                 canvas.drawOval(complication0, mPinkRingLumpPaint);
-                canvas.drawText(complicationText0, complication0.left, complication0.right, mTickAndCirclePaint);
+                canvas.drawText(complicationText0, complication0.left + 15, complication0.bottom - 20, mTickAndCirclePaint);
             }
             if (complicationText1 != null ) {
                 canvas.drawOval(complication1, mPinkRingLumpPaint);
+                canvas.drawText(complicationText1, complication1.left + 15, complication1.bottom - 20, mTickAndCirclePaint);
             }
         }
 
