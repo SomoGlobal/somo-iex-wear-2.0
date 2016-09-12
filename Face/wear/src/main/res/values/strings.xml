@@ -1,5 +1,7 @@
 <resources>
-    <string name="app_name">Bezier Lerp Face</string>
+    <string name="app_name">Sexy Time</string>
+    <string name="complication_watch_face_name">@string/app_name</string>
     <string name="message">Watch face tapped</string>
     <string name="my_analog_name">My Analog</string>
+    <string name="watch_face_config_name">Configurations</string>
 </resources>

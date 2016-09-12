@@ -28,13 +28,16 @@ import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.support.v7.graphics.Palette;
+//import android.support.v7.graphics.Palette;
+import android.support.wearable.complications.ComplicationData;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.widget.Toast;
 
@@ -50,6 +53,22 @@ import java.util.concurrent.TimeUnit;
  */
 public class McFaceService extends CanvasWatchFaceService {
 
+    public static class Dial {
+        public final int id;
+        public final int[] supportedTypes;
+        public final String name;
+        public final int iconId;
+
+        public Dial(int id, int[] supportedTypes, String name, int iconId) {
+            this.id = id;
+            this.supportedTypes = supportedTypes;
+            this.name = name;
+            this.iconId = iconId;
+        }
+    }
+
+    private final static String TAG = McFaceService.class.getSimpleName();
+
     /*
      * Update rate in milliseconds for interactive mode. We update once a second to advance the
      * second hand.
@@ -60,6 +79,11 @@ public class McFaceService extends CanvasWatchFaceService {
      * Handler message id for updating the time periodically in interactive mode.
      */
     private static final int MSG_UPDATE_TIME = 0;
+
+    public static final Dial[] COMPLICATION_DIALS = {
+            new Dial(0, new int[] {ComplicationData.TYPE_SHORT_TEXT}, "Primary", R.drawable.complications_primary_dial),
+            new Dial(1, new int[] {ComplicationData.TYPE_SHORT_TEXT}, "Secondary", R.drawable.complications_secondary_dial)
+    };
 
     @Override
     public Engine onCreateEngine() {
@@ -138,13 +162,19 @@ public class McFaceService extends CanvasWatchFaceService {
                     .setAcceptsTapEvents(true)
                     .build());
 
+            int[] ids = new int[COMPLICATION_DIALS.length];
+            for (int i = 0; i < ids.length; i++) {
+                ids[i] = COMPLICATION_DIALS[i].id;
+            }
+            setActiveComplications(ids);
+
             mBackgroundPaint = new Paint();
             mBackgroundPaint.setColor(Color.BLACK);
             mBackgroundBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.bg);
 
             /* Set defaults for colors */
             mWatchHandColor = Color.WHITE;
-            mWatchHandHighlightColor = Color.RED;
+            mWatchHandHighlightColor = Color.BLUE;
             mWatchHandShadowColor = Color.BLACK;
 
             mHourPaint = new Paint();
@@ -176,17 +206,17 @@ public class McFaceService extends CanvasWatchFaceService {
             mTickAndCirclePaint.setShadowLayer(SHADOW_RADIUS, 0, 0, mWatchHandShadowColor);
 
             /* Extract colors from background image to improve watchface style. */
-            Palette.from(mBackgroundBitmap).generate(new Palette.PaletteAsyncListener() {
+            /*Palette.from(mBackgroundBitmap).generate(new Palette.PaletteAsyncListener() {
                 @Override
                 public void onGenerated(Palette palette) {
                     if (palette != null) {
-                        mWatchHandHighlightColor = palette.getVibrantColor(Color.RED);
+                        mWatchHandHighlightColor = palette.getVibrantColor(Color.BLUE);
                         mWatchHandColor = palette.getLightVibrantColor(Color.WHITE);
                         mWatchHandShadowColor = palette.getDarkMutedColor(Color.BLACK);
                         updateWatchHandStyle();
                     }
                 }
-            });
+            });*/
 
             mCalendar = Calendar.getInstance();
         }
@@ -464,6 +494,12 @@ public class McFaceService extends CanvasWatchFaceService {
         public void onPeekCardPositionUpdate(Rect rect) {
             super.onPeekCardPositionUpdate(rect);
             mPeekCardBounds.set(rect);
+        }
+
+        @Override
+        public void onComplicationDataUpdate(int complicationId, ComplicationData data) {
+            // TODO
+            Log.d(TAG, "onComplicationDataUpdate() id: " + complicationId);
         }
 
         private void registerReceiver() {
