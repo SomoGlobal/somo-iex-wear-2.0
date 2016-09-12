@@ -27,6 +27,8 @@ import android.graphics.Color;
 import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.Handler;
@@ -211,6 +213,7 @@ public class McFaceService extends CanvasWatchFaceService {
         private Paint mPinkRingLumpPaint;
         private Bitmap mBackgroundBitmap;
         private Bitmap mGrayBackgroundBitmap;
+        private Bitmap mGradientBitmap;
         private Bitmap mCosmosBitmap;
         private Bitmap mBokehBitmap;
         private boolean mAmbient;
@@ -245,6 +248,7 @@ public class McFaceService extends CanvasWatchFaceService {
             mPinkRingLumpPaint.setAntiAlias(true);
             mPinkRingLumpPaint.setColor(0xFFC53C91);
             mBackgroundBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.pink_ring);
+            mGradientBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.gradient);
             mCosmosBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.cosmos);
             mBokehBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.bokeh);
 
@@ -494,6 +498,7 @@ public class McFaceService extends CanvasWatchFaceService {
             final float hourHandOffset = (float) minutes / 2f;
             final float hoursRotation = ((float) hours12 * 30) + hourHandOffset;
 
+            boolean drawGradient = false;
             if (mAmbient && (mLowBitAmbient || mBurnInProtection)) {
                 canvas.drawColor(Color.BLACK);
             } else if (mAmbient) {
@@ -503,7 +508,20 @@ public class McFaceService extends CanvasWatchFaceService {
             } else {
                 canvas.drawBitmap(mCosmosBitmap, 36, 36, mBackgroundPaint);
                 canvas.drawBitmap(mBokehBitmap, 36, 36, mBackgroundPaint);
+
+                drawGradient = true;
+                canvas.saveLayer(null, mBackgroundPaint);
+
+                canvas.drawBitmap(mGradientBitmap, 0, 0, mBackgroundPaint);
+
+                Paint xferPaint = new Paint();
+                xferPaint.setColor(0xFF000000);
+                xferPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_ATOP));
+
+                canvas.saveLayer(null, xferPaint);
+
                 canvas.drawBitmap(mBackgroundBitmap, 0, 0, mBackgroundPaint);
+
             }
 
             /*
@@ -557,6 +575,13 @@ public class McFaceService extends CanvasWatchFaceService {
             handMinute1s.draw(this, (int) minutes % 10, canvas, (int) mCenterX + 11, (int) mCenterY);
 
             canvas.restore();
+
+            if (drawGradient) {
+
+
+                canvas.restore();
+                canvas.restore();
+            }
         }
 
         @Override
