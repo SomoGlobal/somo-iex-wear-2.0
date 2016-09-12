@@ -30,6 +30,7 @@ import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -146,8 +147,8 @@ public class McFaceService extends CanvasWatchFaceService {
     private static final int MSG_UPDATE_TIME = 0;
 
     public static final Dial[] COMPLICATION_DIALS = {
-            new Dial(0, new int[] {ComplicationData.TYPE_SHORT_TEXT}, "Primary", R.drawable.complications_primary_dial),
-            new Dial(1, new int[] {ComplicationData.TYPE_SHORT_TEXT}, "Secondary", R.drawable.complications_secondary_dial)
+            new Dial(0, new int[]{ComplicationData.TYPE_SHORT_TEXT}, "Primary", R.drawable.complications_primary_dial),
+            new Dial(1, new int[]{ComplicationData.TYPE_SHORT_TEXT}, "Secondary", R.drawable.complications_secondary_dial)
     };
 
     @Override
@@ -226,6 +227,12 @@ public class McFaceService extends CanvasWatchFaceService {
         private NumberView handSeconds10s;
         private NumberView handSeconds1s;
 
+        private String complicationText0;
+        private String complicationText1;
+        private RectF complication0;
+        private RectF complication1;
+
+
         @Override
         public void onCreate(SurfaceHolder holder) {
             super.onCreate(holder);
@@ -285,6 +292,7 @@ public class McFaceService extends CanvasWatchFaceService {
             mTickAndCirclePaint.setAntiAlias(true);
             mTickAndCirclePaint.setStyle(Paint.Style.STROKE);
             mTickAndCirclePaint.setShadowLayer(SHADOW_RADIUS, 0, 0, mWatchHandShadowColor);
+            mTickAndCirclePaint.setTextSize(20);
 
             xferPaint = new Paint();
             xferPaint.setColor(0xFF000000);
@@ -304,6 +312,11 @@ public class McFaceService extends CanvasWatchFaceService {
             });*/
 
             mCalendar = Calendar.getInstance();
+
+            int complicationSize = 80;
+            complication0 = new RectF(200 - complicationSize, 260, 200, 260 + complicationSize);
+            complication1 = new RectF(280, 200 - complicationSize, 280 + complicationSize, 200);
+
         }
 
         @Override
@@ -578,10 +591,21 @@ public class McFaceService extends CanvasWatchFaceService {
             canvas.restore();
 
             if (drawGradient) {
-
-
                 canvas.restore();
                 canvas.restore();
+            }
+
+            drawComplications(canvas);
+        }
+
+        private void drawComplications(Canvas canvas) {
+            if (complicationText0 != null ) {
+                canvas.drawOval(complication0, mPinkRingLumpPaint);
+                canvas.drawText(complicationText0, complication0.left + 15, complication0.bottom - 20, mTickAndCirclePaint);
+            }
+            if (complicationText1 != null ) {
+                canvas.drawOval(complication1, mPinkRingLumpPaint);
+                canvas.drawText(complicationText1, complication1.left + 15, complication1.bottom - 20, mTickAndCirclePaint);
             }
         }
 
@@ -610,8 +634,16 @@ public class McFaceService extends CanvasWatchFaceService {
 
         @Override
         public void onComplicationDataUpdate(int complicationId, ComplicationData data) {
-            // TODO
             Log.d(TAG, "onComplicationDataUpdate() id: " + complicationId);
+            if (data.getType() == ComplicationData.TYPE_SHORT_TEXT) {
+                if (complicationId == 0) {
+                    complicationText0 = data.getShortText().getText(getApplicationContext(), Calendar.getInstance().getTimeInMillis()).toString();
+                    Log.d(TAG, "onComplicationDataUpdate: " + complicationText0);
+                } else {
+                    complicationText1 = data.getShortText().getText(getApplicationContext(), Calendar.getInstance().getTimeInMillis()).toString();
+                    Log.d(TAG, "onComplicationDataUpdate: " + complicationText1);
+                }
+            }
         }
 
         private void registerReceiver() {
