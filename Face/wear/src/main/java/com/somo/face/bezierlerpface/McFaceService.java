@@ -211,6 +211,7 @@ public class McFaceService extends CanvasWatchFaceService {
         private Paint mTickAndCirclePaint;
         private Paint mBackgroundPaint;
         private Paint mPinkRingLumpPaint;
+        private Paint xferPaint;
         private Bitmap mBackgroundBitmap;
         private Bitmap mGrayBackgroundBitmap;
         private Bitmap mGradientBitmap;
@@ -284,6 +285,10 @@ public class McFaceService extends CanvasWatchFaceService {
             mTickAndCirclePaint.setAntiAlias(true);
             mTickAndCirclePaint.setStyle(Paint.Style.STROKE);
             mTickAndCirclePaint.setShadowLayer(SHADOW_RADIUS, 0, 0, mWatchHandShadowColor);
+
+            xferPaint = new Paint();
+            xferPaint.setColor(0xFF000000);
+            xferPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_ATOP));
 
             /* Extract colors from background image to improve watchface style. */
             /*Palette.from(mBackgroundBitmap).generate(new Palette.PaletteAsyncListener() {
@@ -514,10 +519,6 @@ public class McFaceService extends CanvasWatchFaceService {
 
                 canvas.drawBitmap(mGradientBitmap, 0, 0, mBackgroundPaint);
 
-                Paint xferPaint = new Paint();
-                xferPaint.setColor(0xFF000000);
-                xferPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_ATOP));
-
                 canvas.saveLayer(null, xferPaint);
 
                 canvas.drawBitmap(mBackgroundBitmap, 0, 0, mBackgroundPaint);
@@ -555,7 +556,7 @@ public class McFaceService extends CanvasWatchFaceService {
                 canvas.rotate(secondsRotation, mCenterX, mCenterY);
                 canvas.translate(0, -200);
 
-                canvas.drawCircle(mCenterX, mCenterY, 35, mPinkRingLumpPaint);
+                canvas.drawCircle(mCenterX, mCenterY, 31, mPinkRingLumpPaint);
 
                 canvas.rotate(-secondsRotation, mCenterX, mCenterY);
                 handSeconds10s.draw(this, (int) seconds / 10, canvas, (int) mCenterX - 11, (int) mCenterY);
@@ -568,7 +569,7 @@ public class McFaceService extends CanvasWatchFaceService {
             canvas.rotate(minutesRotation, mCenterX, mCenterY);
             canvas.translate(0, -200);
 
-            canvas.drawCircle(mCenterX, mCenterY, 35, mPinkRingLumpPaint);
+            canvas.drawCircle(mCenterX, mCenterY, 31, mPinkRingLumpPaint);
 
             canvas.rotate(-minutesRotation, mCenterX, mCenterY);
             handMinute10s.draw(this, (int) minutes / 10, canvas, (int) mCenterX - 11, (int) mCenterY);
