@@ -117,6 +117,7 @@ public class McFaceService extends CanvasWatchFaceService {
                     }
                 });
                 anim.start();
+                engine.invalidate();
             }
 
             /**/
