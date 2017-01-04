@@ -26,6 +26,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
@@ -34,7 +35,6 @@ import android.graphics.RectF;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-//import android.support.v7.graphics.Palette;
 import android.support.wearable.complications.ComplicationData;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceService;
@@ -51,6 +51,8 @@ import java.lang.reflect.Field;
 import java.util.Calendar;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
+
+//import android.support.v7.graphics.Palette;
 
 /**
  * Analog watch face with a ticking second hand. In ambient mode, the second hand isn't
@@ -226,6 +228,8 @@ public class McFaceService extends CanvasWatchFaceService {
         private NumberView handMinute1s;
         private NumberView handSeconds10s;
         private NumberView handSeconds1s;
+        private NumberView handHours10s;
+        private NumberView handHours1s;
 
         private String complicationText0;
         private String complicationText1;
@@ -312,10 +316,6 @@ public class McFaceService extends CanvasWatchFaceService {
             });*/
 
             mCalendar = Calendar.getInstance();
-
-            int complicationSize = 80;
-            complication0 = new RectF(200 - complicationSize, 260, 200, 260 + complicationSize);
-            complication1 = new RectF(280, 200 - complicationSize, 280 + complicationSize, 200);
 
         }
 
@@ -419,13 +419,6 @@ public class McFaceService extends CanvasWatchFaceService {
             sHourHandLength = (float) (mCenterX * 0.5);
 
 
-            /* Scale loaded background image (more efficient) if surface dimensions change. */
-            float scale = ((float) width) / (float) mBackgroundBitmap.getWidth();
-
-            mBackgroundBitmap = Bitmap.createScaledBitmap(mBackgroundBitmap,
-                    (int) (mBackgroundBitmap.getWidth() * scale),
-                    (int) (mBackgroundBitmap.getHeight() * scale), true);
-
             /*
              * Create a gray version of the image only if it will look nice on the device in
              * ambient mode. That means we don't want devices that support burn-in
@@ -440,13 +433,36 @@ public class McFaceService extends CanvasWatchFaceService {
                 initGrayBackgroundBitmap();
             }
 
-            int charWidth = Math.round((float) width * 0.05f);
+            int charWidth = Math.round((float) width * 0.03f);
             int charHeight = Math.round(charWidth * 1.9f);
-            int strokeWidth = Math.round((float) width * 0.010f);
-            handMinute10s = new NumberView(getApplicationContext(), charWidth, charHeight, 0xFFFFFFFF, strokeWidth);
-            handMinute1s = new NumberView(getApplicationContext(), charWidth, charHeight, 0xFFFFFFFF, strokeWidth);
+            int strokeWidth = Math.round((float) width * 0.005f);
+            handMinute10s = new NumberView(getApplicationContext(), charWidth, charHeight, 0xFFCCCCCC, strokeWidth);
+            handMinute1s = new NumberView(getApplicationContext(), charWidth, charHeight, 0xFFCCCCCC, strokeWidth);
             handSeconds10s = new NumberView(getApplicationContext(), charWidth, charHeight, 0xFFCCCCCC, strokeWidth);
             handSeconds1s = new NumberView(getApplicationContext(), charWidth, charHeight, 0xFFCCCCCC, strokeWidth);
+            handHours10s = new NumberView(getApplicationContext(), charWidth, charHeight, 0xFFFFFFFF, strokeWidth);
+            handHours1s = new NumberView(getApplicationContext(), charWidth, charHeight, 0xFFFFFFFF, strokeWidth);
+
+
+            //Define complication zones
+            int complicationSize = (int) (mCenterX / 5);
+            //Amount to offset from the centre - diag bottom left / top right. 1/(X *... X=1 would put the circle at the watch edge, 2 half way between centre and edge
+            float offsetFraction = (float) (1 / (2.5 * Math.sqrt(2.0)));
+
+            complication0 = new RectF(
+                    mCenterX * (1 - offsetFraction) - complicationSize,
+                    mCenterY * (1 + offsetFraction) - complicationSize,
+                    mCenterX * (1 - offsetFraction) + complicationSize,
+                    mCenterY * (1 + offsetFraction) + complicationSize
+            );
+
+            complication1 = new RectF(
+                    mCenterX * (1 + offsetFraction) - complicationSize,
+                    mCenterY * (1 - offsetFraction) - complicationSize,
+                    mCenterX * (1 + offsetFraction) + complicationSize,
+                    mCenterY * (1 - offsetFraction) + complicationSize
+            );
+
         }
 
         private void initGrayBackgroundBitmap() {
@@ -517,24 +533,32 @@ public class McFaceService extends CanvasWatchFaceService {
             final float hoursRotation = ((float) hours12 * 30) + hourHandOffset;
 
             boolean drawGradient = false;
+
+            Matrix matrixCosmos = new Matrix();
+            matrixCosmos.setScale((mCenterX * 2) / mCosmosBitmap.getWidth(), (mCenterY * 2) / mCosmosBitmap.getHeight());
+
+            Matrix matrixPinkRing = new Matrix();
+            matrixPinkRing.setScale((mCenterX * 2) / mBackgroundBitmap.getWidth(), (mCenterY * 2) / mBackgroundBitmap.getHeight());
+
+
             if (mAmbient && (mLowBitAmbient || mBurnInProtection)) {
                 canvas.drawColor(Color.BLACK);
             } else if (mAmbient) {
-                canvas.drawBitmap(mCosmosBitmap, 36, 36, mBackgroundPaint);
-                canvas.drawBitmap(mBokehBitmap, 36, 36, mBackgroundPaint);
-                canvas.drawBitmap(mGrayBackgroundBitmap, 0, 0, mBackgroundPaint);
+                canvas.drawBitmap(mCosmosBitmap, matrixCosmos, mBackgroundPaint);
+                canvas.drawBitmap(mBokehBitmap, matrixCosmos, mBackgroundPaint);
+                canvas.drawBitmap(mGrayBackgroundBitmap, matrixCosmos, mBackgroundPaint);
             } else {
-                canvas.drawBitmap(mCosmosBitmap, 36, 36, mBackgroundPaint);
-                canvas.drawBitmap(mBokehBitmap, 36, 36, mBackgroundPaint);
+                canvas.drawBitmap(mCosmosBitmap, matrixCosmos, mBackgroundPaint);
+                canvas.drawBitmap(mBokehBitmap, matrixCosmos, mBackgroundPaint);
 
                 drawGradient = true;
                 canvas.saveLayer(null, mBackgroundPaint);
 
-                canvas.drawBitmap(mGradientBitmap, 0, 0, mBackgroundPaint);
+                canvas.drawBitmap(mGradientBitmap, matrixPinkRing, mBackgroundPaint);
 
                 canvas.saveLayer(null, xferPaint);
 
-                canvas.drawBitmap(mBackgroundBitmap, 0, 0, mBackgroundPaint);
+                canvas.drawBitmap(mBackgroundBitmap, matrixPinkRing, mBackgroundPaint);
 
             }
 
@@ -560,6 +584,8 @@ public class McFaceService extends CanvasWatchFaceService {
                 canvas.drawRect(mPeekCardBounds, mBackgroundPaint);
             }
 
+            float circleRadius = mCenterX / 10;
+
             /*
              * Ensure the "seconds" hand is drawn only when we are in interactive mode.
              * Otherwise, we only update the watch face once a minute.
@@ -567,28 +593,42 @@ public class McFaceService extends CanvasWatchFaceService {
             if (!mAmbient) {
                 canvas.save();
                 canvas.rotate(secondsRotation, mCenterX, mCenterY);
-                canvas.translate(0, -200);
+                canvas.translate(0, (float) (-mCenterX * 0.9));
 
-                canvas.drawCircle(mCenterX, mCenterY, 31, mPinkRingLumpPaint);
+                canvas.drawCircle(mCenterX, mCenterY, circleRadius, mPinkRingLumpPaint);
 
                 canvas.rotate(-secondsRotation, mCenterX, mCenterY);
-                handSeconds10s.draw(this, (int) seconds / 10, canvas, (int) mCenterX - 11, (int) mCenterY);
-                handSeconds1s.draw(this, (int) seconds % 10, canvas, (int) mCenterX + 11, (int) mCenterY);
+                handSeconds10s.draw(this, (int) seconds / 10, canvas, (int) (mCenterX * 0.97), (int) mCenterY);
+                handSeconds1s.draw(this, (int) seconds % 10, canvas, (int) (mCenterX * 1.03), (int) mCenterY);
 
                 canvas.restore();
             }
 
             canvas.save();
             canvas.rotate(minutesRotation, mCenterX, mCenterY);
-            canvas.translate(0, -200);
+            canvas.translate(0, (float) (-mCenterX * 0.9));
 
-            canvas.drawCircle(mCenterX, mCenterY, 31, mPinkRingLumpPaint);
+            canvas.drawCircle(mCenterX, mCenterY, circleRadius, mPinkRingLumpPaint);
 
             canvas.rotate(-minutesRotation, mCenterX, mCenterY);
-            handMinute10s.draw(this, (int) minutes / 10, canvas, (int) mCenterX - 11, (int) mCenterY);
-            handMinute1s.draw(this, (int) minutes % 10, canvas, (int) mCenterX + 11, (int) mCenterY);
+            handMinute10s.draw(this, minutes / 10, canvas, (int) (mCenterX * 0.97), (int) mCenterY);
+            handMinute1s.draw(this, minutes % 10, canvas, (int) (mCenterX * 1.03), (int) mCenterY);
 
             canvas.restore();
+
+            canvas.save();
+            canvas.rotate(hoursRotation, mCenterX, mCenterY);
+            canvas.translate(0, (float) (-mCenterX * 0.9));
+
+            canvas.drawCircle(mCenterX, mCenterY, circleRadius, mPinkRingLumpPaint);
+
+            canvas.rotate(-hoursRotation, mCenterX, mCenterY);
+            handHours10s.draw(this, hours12 / 10, canvas, (int) (mCenterX * 0.97), (int) mCenterY);
+            handHours1s.draw(this, hours12 % 10, canvas, (int) (mCenterX * 1.03), (int) mCenterY);
+
+            canvas.restore();
+
+
 
             if (drawGradient) {
                 canvas.restore();
@@ -599,13 +639,17 @@ public class McFaceService extends CanvasWatchFaceService {
         }
 
         private void drawComplications(Canvas canvas) {
+            mTickAndCirclePaint.setTextSize(mCenterX / 10);
+            Rect bounds = new Rect();
             if (complicationText0 != null ) {
                 canvas.drawOval(complication0, mPinkRingLumpPaint);
-                canvas.drawText(complicationText0, complication0.left + 15, complication0.bottom - 20, mTickAndCirclePaint);
+                mTickAndCirclePaint.getTextBounds(complicationText0, 0, complicationText0.length(), bounds);
+                canvas.drawText(complicationText0, complication0.centerX() - bounds.width() / 2, complication0.centerY() + bounds.height() / 2, mTickAndCirclePaint);
             }
             if (complicationText1 != null ) {
                 canvas.drawOval(complication1, mPinkRingLumpPaint);
-                canvas.drawText(complicationText1, complication1.left + 15, complication1.bottom - 20, mTickAndCirclePaint);
+                mTickAndCirclePaint.getTextBounds(complicationText1, 0, complicationText1.length(), bounds);
+                canvas.drawText(complicationText1, complication1.centerX() - bounds.width() / 2, complication1.centerY() + bounds.height() / 2, mTickAndCirclePaint);
             }
         }
 
